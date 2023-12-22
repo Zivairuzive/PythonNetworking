@@ -112,4 +112,4 @@ class ChatServer(object):
         self.server.close()
 
 f = ChatServer(8080)
-f.run()
+# f.run()
