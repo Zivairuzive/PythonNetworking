@@ -1,4 +1,4 @@
-import socket, sys
+import socket, sys, select
 from chat_select import send, receive
 
 
@@ -26,12 +26,11 @@ class ChatClient(object):
             data = receive(self.sock)
             #contains client address , set it 
             addr = data.split('CLIENT: ')[1]
-            self.prompt = f"[{'@'.join(self.name, addr)}]"
+            self.prompt = f"[{'@'.join((self.name, addr))}]"
         except socket.error as e:
             print("Failed to connect to chat server: ", self.port)
             sys.exit(1)
             
-    
     def run(self):
         ''' Chat client main loop '''
         while self.connected:
@@ -39,15 +38,16 @@ class ChatClient(object):
                 sys.stdout.write(self.prompt)
                 sys.stdout.flush()
                 #wai fot input from stdin and socket 
-                readable , writeable, exceptional = select.select([0, self.sock],[],[])
+                readable , writeable, exceptional = select.select([self.sock, self.sock],[],[])
                 for sock in readable:
                     if sock == 0:
                         data = sys.stdin.readline().strip()
                         if data: send(self.sock, data)
                     elif sock == self.sock:
-                        data = receive(self.sock)
-                        if not data:
-                            print("Client Shutting down")
+                        try:
+                            data = receive(self.sock)
+                        except socket.error as data:
+                            print(f"Client Shutting down: {e}")
                             self.connected =False 
                             break 
                         else:
@@ -56,6 +56,7 @@ class ChatClient(object):
             except KeyboardInterrupt:
                 print("Client interrupted")
                 self.sock.close()
-                break 
-
-f = ChatClient('HP', 8080)
+                break
+ 
+if __name__ == '__main__':
+    ChatClient('HP', 8080).run()

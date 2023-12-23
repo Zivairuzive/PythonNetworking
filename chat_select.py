@@ -15,12 +15,24 @@ def send(ch, *args):
     val = socket.htonl(len(buf))
     size = struct.pack("L",val)
     ch.send(size)
+    print(f"send {size} by {ch.getsockname()}, raw data is {args}")
     ch.send(buf)
     
     pass 
 
 def receive(chann):
-    ...
+    _size = struct.calcsize('L')
+    _size = chann.recv(_size)
+    try:
+        _size = socket.ntohl(struct.unpack('L', _size)[0])
+    except socket.error as e:
+        return ''
+    buf = ''
+    while len(buf) < _size:
+        buf = chann.recv(_size-len(buf))
+    f = pickle.loads(buf)[0]
+    return pickle.loads(buf)[0]
+
 
 class ChatServer(object):
     
@@ -35,8 +47,8 @@ class ChatServer(object):
         #catch keyboard interrupts
 
         # breakpoint()
-        signal.signal(signal.SIG_IGN, self.signal_handler)
-    
+        signal.signal(signal.SIGINT, self.signal_handler)
+        
     def signal_handler(self, sign_num, frame):
         '''clean client outputs'''
         # close the server 
@@ -44,14 +56,15 @@ class ChatServer(object):
         for output in self.outputs:
             output.close()
         self.server.close()
+        return 
         
     def get_client_name(self, client):
-        client = self.client_name[client]
+        info = self.client_map[client]
         host, name = info[0][0], info[1]
         return '@'.join((host, name))
     
     def run(self):
-        inputs = [self.server, sys.stdin]
+        inputs = [self.server, self.server]
         self.outputs = []
         
         running = 1
@@ -59,12 +72,13 @@ class ChatServer(object):
             try:
                 readable,writable, exceptional = select.select(inputs, self.outputs, [])
             except select.error as e:
+                print(e)
                 break 
             for sock in readable:
                 if sock == self.server:
                     #handle server socket 
                     client, address = sock.accept()
-                    print(f"Chat server: got connection {client.fileno} from  {address}")
+                    print(f"Chat server: got connection {client.fileno()} from  {address}")
                     #read the login name 
                     cname = receive(client).split("NAME: ")[1]
                     
@@ -76,7 +90,7 @@ class ChatServer(object):
                     #send joining information to other clients 
                     msg = f'\n Connected: New client {self.clients} from {self.get_client_name(client)}'
                     for output in self.outputs:
-                        send(msg)
+                        send(output, msg)
                         
                     self.outputs.append(client)
                 elif sock == sys.stdin:
@@ -104,12 +118,12 @@ class ChatServer(object):
                             #Sending client leaving to others 
                             msg = f'\n Left the room: Client from {self.get_client_name(sock)}'
                             for output in self.outputs:
-                                send(msg, output)
+                                send(output, msg)
                     except socket.error as e:
                         #remove 
                         inputs.remove(sock)
                         self.outputs.remove(sock)
         self.server.close()
 
-f = ChatServer(8080)
-# f.run()
+if __name__ == "__main__":
+    ChatServer(8080).run()
