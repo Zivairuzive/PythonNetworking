@@ -33,6 +33,12 @@ def receive(chann):
     f = pickle.loads(buf)[0]
     return pickle.loads(buf)[0]
 
+import enum 
+
+class Connection(enum.Enum):
+    connected  = 1
+    disconnected = 2
+
 
 class ChatServer(object):
     
@@ -67,9 +73,10 @@ class ChatServer(object):
         inputs = [self.server, self.server]
         self.outputs = []
         
-        running = 1
+        running = Connection.connected
         while running:
             try:
+                print("Waiting!")
                 readable,writable, exceptional = select.select(inputs, self.outputs, [])
             except select.error as e:
                 print(e)
@@ -83,8 +90,8 @@ class ChatServer(object):
                     cname = receive(client).split("NAME: ")[1]
                     
                     #compute client name and send back 
-                    self.clients +=1
-                    send(client, F'CLIENT: {str(address[0])}')
+                    self.clients += 1
+                    send(client, f'CLIENT: {str(address[0])}')
                     inputs.append(client)
                     self.client_map[client] = (address, cname)
                     #send joining information to other clients 
@@ -96,7 +103,7 @@ class ChatServer(object):
                 elif sock == sys.stdin:
                     # handle standard input 
                     junk = sys.stdin.realine()
-                    running = False
+                    running = Connection.disconnected
                 else:
                     #handle all other sockets 
                     try:

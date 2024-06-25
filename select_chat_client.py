@@ -18,8 +18,8 @@ class ChatClient(object):
             #connect to server 
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((self.host,port))
-            #now connected!
-            print(f"Now connected to chat server@ port: {self.port}")
+            #now connected! 
+            print(f"Now connected to chat server @ port: {self.port}")
             self.connected = True 
             #send name to server 
             send(self.sock, f"NAME: {self.name}")
@@ -37,7 +37,7 @@ class ChatClient(object):
             try:
                 sys.stdout.write(self.prompt)
                 sys.stdout.flush()
-                #wai fot input from stdin and socket 
+                # wait for input from stdin and socket 
                 readable , writeable, exceptional = select.select([self.sock, self.sock],[],[])
                 for sock in readable:
                     if sock == 0:
